@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="SysMonitorGUI/SysMonitorGUI.vcxproj" Id="7a4901ad-5b9a-491d-abf6-afcb73094729" />
+</Solution>
