@@ -41,14 +41,12 @@ SystemMonitor::SystemMonitor() :
     gpuHistory.resize(100, 0.0f);
     coreHistories.resize(numProcessors, std::vector<float>(100, 0.0f));
 
-    // Ініціалізація надійного читання ядер
     NtQuerySystemInfo = (PNT_QUERY_SYSTEM_INFORMATION)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtQuerySystemInformation");
     if (NtQuerySystemInfo) {
         prevCoreStates.resize(numProcessors);
         NtQuerySystemInfo(SystemProcessorPerformanceInformation, prevCoreStates.data(), sizeof(SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION) * numProcessors, NULL);
     }
 
-    // PDH тільки для дисків
     PdhOpenQuery(NULL, NULL, &diskQuery);
     DWORD logicalDrives = GetLogicalDrives();
     for (int i = 0; i < 26; i++) {
@@ -313,7 +311,6 @@ const SystemInfoData& SystemMonitor::GetSystemInfo() {
                 cachedSysInfo.osVersion = productName;
             }
 
-            // ФІКС ДЛЯ WINDOWS 11
             char buildNumber[256];
             DWORD buildSize = sizeof(buildNumber);
             if (RegQueryValueExA(hKey, "CurrentBuildNumber", NULL, NULL, (LPBYTE)buildNumber, &buildSize) == ERROR_SUCCESS) {
