@@ -10,7 +10,7 @@
 #include <pdh.h>
 
 #define SystemProcessorPerformanceInformation 8
-#define CORESENSE_VERSION "v1.0.0"
+#define CORESENSE_VERSION "v1.0.0.0"
 
 typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
     LARGE_INTEGER IdleTime;
