@@ -275,7 +275,7 @@ int main(int argc, char** argv)
         }
 
         if (miniMode) {
-            ImGui::TextColored(currentAccentColor, "CoreSense Mini");
+            ImGui::TextColored(currentAccentColor, "CoreSense Mini %s", CORESENSE_VERSION);
             if (monitor.IsAdmin()) { ImGui::SameLine(); ImGui::TextColored(ImVec4(0.4f, 0.9f, 0.4f, 1.0f), "[" ICON_FA_SHIELD_ALT "]"); }
             ImGui::SameLine(ImGui::GetWindowWidth() - 100 * main_scale);
             if (DrawToggle("On Top", &alwaysOnTop, currentAccentColor)) SetWindowPos(hwnd, alwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
@@ -448,6 +448,7 @@ int main(int argc, char** argv)
                 if (ImGui::BeginTabItem(" " ICON_FA_COGS " Settings  ")) {
                     ImGui::Spacing();
                     ImGui::TextColored(currentAccentColor, ICON_FA_INFO_CIRCLE " SYSTEM INFORMATION");
+                    ImGui::TextColored(infoColor, "App Version:CoreSense %s", CORESENSE_VERSION);
                     ImGui::TextColored(infoColor, "OS Version: %s", sysInfo.osVersion.c_str());
                     ImGui::TextColored(infoColor, "Processor:  %s", sysInfo.cpuName.c_str());
                     ImGui::TextColored(infoColor, "Uptime:     %u hours, %u minutes", sysInfo.uptimeHours, sysInfo.uptimeMinutes);
