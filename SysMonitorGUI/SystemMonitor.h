@@ -10,7 +10,7 @@
 #include <pdh.h>
 
 #define SystemProcessorPerformanceInformation 8
-#define CORESENSE_VERSION "v1.0.0.0"
+#define CORESENSE_VERSION "v1.0.1.0"
 
 typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
     LARGE_INTEGER IdleTime;
@@ -58,16 +58,6 @@ struct DriveData {
     DWORDLONG freeGB;
     double readSpeedMBps;
     double writeSpeedMBps;
-};
-
-struct ProcessData {
-    DWORD pid;
-    std::string name;
-    double cpuLoad;
-    DWORD threads;
-    DWORD priority;
-    SIZE_T ramUsedMB;
-    std::string path;
 };
 
 struct NetworkData {
@@ -122,10 +112,6 @@ private:
     ULONGLONG lastDiskQueryTime;
     std::vector<DriveData> cachedDrives;
 
-    std::vector<ProcessData> cachedProcesses;
-    ULONGLONG lastProcessQueryTime;
-    std::map<DWORD, ULONGLONG> prevProcessTimes;
-
     std::vector<float> cpuHistory;
     std::vector<float> ramHistory;
     std::vector<float> gpuHistory;
@@ -152,11 +138,6 @@ public:
 
     bool IsAdmin();
     void RestartAsAdmin();
-    bool IsAutoStartEnabled();
-    void EnableAutoStart(bool enable);
-
-    void SaveSettings(int theme, float r, float g, float b);
-    void LoadSettings(int& theme, float& r, float& g, float& b);
 
     void Log(const std::string& message);
     bool IsLogging() const;
@@ -177,8 +158,6 @@ public:
     MemoryData GetMemoryInfo();
 
     const std::vector<DriveData>& GetDrivesInfo();
-    std::vector<ProcessData> GetProcesses();
-    bool KillProcess(DWORD processID);
     const std::vector<NetworkData>& GetNetworkStats();
     const std::vector<GpuData>& GetGpuList();
 };
