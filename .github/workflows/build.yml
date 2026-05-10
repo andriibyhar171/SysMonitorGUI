@@ -26,11 +26,10 @@ jobs:
         $certBytes = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE_BASE64 }}")
         [System.IO.File]::WriteAllBytes("${{ github.workspace }}\cert.pfx", $certBytes)
 
-    - name: ✍️ Підпис виконуваного файлу (SignTool)
+   - name: ✍️ Підпис виконуваного файлу (SignTool)
       shell: pwsh
       run: |
-        # Знаходимо signtool (він є в Windows SDK на сервері)
-        $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin" -Filter signtool.exe -Recurse | Select-Object -First 1
+        $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin" -Filter signtool.exe -Recurse | Where-Object { $_.FullName -match "\\x64\\" } | Select-Object -First 1
         & $signtool.FullName sign /f "${{ github.workspace }}\cert.pfx" /p "${{ secrets.CERT_PASSWORD }}" /fd SHA256 /t http://timestamp.digicert.com /v "x64/Release/CoreSense.exe"
 
     - name: 📦 Збереження підписаного .exe як артефакту
