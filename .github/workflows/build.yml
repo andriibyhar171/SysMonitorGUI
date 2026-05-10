@@ -1,0 +1,27 @@
+name: CoreSense Auto-Build 🚀
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: 📥 Отримання коду з репозиторію
+      uses: actions/checkout@v4
+
+    - name: 🛠 Налаштування MSBuild (компілятор Visual Studio)
+      uses: microsoft/setup-msbuild@v2
+
+    - name: 🏗 Збірка проєкту (Release | x64)
+      run: msbuild SysMonitorGUI.sln /p:Configuration=Release /p:Platform=x64 /m
+
+    - name: 📦 Збереження готового .exe як артефакту
+      uses: actions/upload-artifact@v4
+      with:
+        name: CoreSense-Utility-v1.0.1
+        path: x64/Release/SysMonitorGUI.exe
