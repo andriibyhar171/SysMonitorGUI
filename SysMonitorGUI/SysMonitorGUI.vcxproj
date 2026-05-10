@@ -97,9 +97,9 @@
       <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;psapi.lib;iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
-    <PostBuildEvent>
-      <Command>signtool sign /f "C:\Users\Andrii Byhar\source\repos\SysMonitorGUI\SysMonitorGUI\Certificate\ABCertificate.pfx" /p zyQ1winde /fd SHA256 /t http://timestamp.digicert.com /v "$(TargetPath)"</Command>
-    </PostBuildEvent>
+	<PostBuildEvent Condition="'$(GITHUB_ACTIONS)' == ''">
+        <Command>signtool sign /f "$(ProjectDir)Certificate\ABCertificate.pfx" /p zyQ1winde /fd SHA256 /t http://timestamp.digicert.com /v "$(TargetPath)"</Command>
+	</PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -119,9 +119,9 @@
       <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;psapi.lib;iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
-    <PostBuildEvent>
-      <Command>signtool sign /f "C:\Users\Andrii Byhar\source\repos\SysMonitorGUI\SysMonitorGUI\Certificate\ABCertificate.pfx" /p zyQ1winde /fd SHA256 /t http://timestamp.digicert.com /v "$(TargetPath)"</Command>
-    </PostBuildEvent>
+	<PostBuildEvent Condition="'$(GITHUB_ACTIONS)' == ''">
+        <Command>signtool sign /f "$(ProjectDir)Certificate\ABCertificate.pfx" /p zyQ1winde /fd SHA256 /t http://timestamp.digicert.com /v "$(TargetPath)"</Command>
+	</PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -160,9 +160,9 @@
       <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;psapi.lib;iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
-    <PostBuildEvent>
-      <Command>signtool sign /f "C:\Users\Andrii Byhar\source\repos\SysMonitorGUI\SysMonitorGUI\Certificate\ABCertificate.pfx" /p zyQ1winde /fd SHA256 /t http://timestamp.digicert.com /v "$(TargetPath)"</Command>
-    </PostBuildEvent>
+	<PostBuildEvent Condition="'$(GITHUB_ACTIONS)' == ''">
+        <Command>signtool sign /f "$(ProjectDir)Certificate\ABCertificate.pfx" /p zyQ1winde /fd SHA256 /t http://timestamp.digicert.com /v "$(TargetPath)"</Command>
+	</PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ConfigManager.h" />
