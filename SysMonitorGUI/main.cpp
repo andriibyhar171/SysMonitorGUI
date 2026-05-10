@@ -132,7 +132,6 @@ int main(int argc, char** argv)
 
         ImGui_ImplDX11_NewFrame(); ImGui_ImplWin32_NewFrame(); ImGui::NewFrame();
 
-        // Викликаємо весь інтерфейс з нового модуля
         CoreSenseUI::Render(monitor, hwnd, nid, main_scale);
 
         ImGui::Render();
