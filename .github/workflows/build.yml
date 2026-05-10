@@ -23,5 +23,5 @@ jobs:
     - name: 📦 Збереження готового .exe як артефакту
       uses: actions/upload-artifact@v4
       with:
-        name: CoreSense-Utility-v1.0.0
-        path: x64/Release/SysMonitorGUI.exe
+        name: CoreSense-Utility-v1.0.1
+        path: x64/Release/CoreSense.exe
