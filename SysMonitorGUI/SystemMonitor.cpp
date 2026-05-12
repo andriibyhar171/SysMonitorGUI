@@ -6,6 +6,7 @@
 #include <shellapi.h>
 #include <comdef.h>
 #include <Wbemidl.h>
+#include <algorithm>
 
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "wbemuuid.lib")
@@ -98,43 +99,53 @@ void SystemMonitor::TemperatureWorker() {
     }
 
     IWbemLocator* pLoc = NULL;
-    IWbemServices* pSvc = NULL;
-
     if (SUCCEEDED(CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID*)&pLoc))) {
-        if (SUCCEEDED(pLoc->ConnectServer(_bstr_t(L"ROOT\\WMI"), NULL, NULL, 0, NULL, 0, 0, &pSvc))) {
-            CoSetProxyBlanket(pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
-        }
-    }
 
-    while (!stopTempThread) {
-        if (pSvc) {
-            IEnumWbemClassObject* pEnumerator = NULL;
-            if (SUCCEEDED(pSvc->ExecQuery(bstr_t("WQL"), bstr_t("SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature"), WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, NULL, &pEnumerator))) {
-                IWbemClassObject* pclsObj = NULL;
-                ULONG uReturn = 0;
-                while (pEnumerator) {
-                    if (FAILED(pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn)) || uReturn == 0) break;
-                    VARIANT vtProp;
-                    if (SUCCEEDED(pclsObj->Get(L"CurrentTemperature", 0, &vtProp, 0, 0))) {
-                        if (vtProp.vt == VT_I4) {
-                            cachedCpuTemp.store((vtProp.lVal / 10.0) - 273.15);
+        while (!stopTempThread) {
+            IWbemServices* pSvc = NULL;
+
+            if (SUCCEEDED(pLoc->ConnectServer(_bstr_t(L"ROOT\\WMI"), NULL, NULL, 0, NULL, 0, 0, &pSvc))) {
+                CoSetProxyBlanket(pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
+
+                IEnumWbemClassObject* pEnumerator = NULL;
+                if (SUCCEEDED(pSvc->ExecQuery(bstr_t("WQL"), bstr_t("SELECT CurrentTemperature FROM MSAcpi_ThermalZoneTemperature"), WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, NULL, &pEnumerator))) {
+                    IWbemClassObject* pclsObj = NULL;
+                    ULONG uReturn = 0;
+                    double maxTemp = 0.0;
+
+                    while (pEnumerator) {
+                        if (FAILED(pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn)) || uReturn == 0) break;
+                        VARIANT vtProp;
+                        if (SUCCEEDED(pclsObj->Get(L"CurrentTemperature", 0, &vtProp, 0, 0))) {
+                            if (vtProp.vt == VT_I4) {
+                                double currentC = (vtProp.lVal / 10.0) - 273.15;
+                                if (currentC > maxTemp && currentC < 150.0) {
+                                    maxTemp = currentC;
+                                }
+                            }
+                            VariantClear(&vtProp);
                         }
-                        VariantClear(&vtProp);
+                        pclsObj->Release();
                     }
-                    pclsObj->Release();
-                    break;
+
+                    if (maxTemp > 0.0) {
+                        cachedCpuTemp.store(maxTemp);
+                    }
+                    pEnumerator->Release();
                 }
-                pEnumerator->Release();
+                pSvc->Release();
+            }
+
+            DWORD waitTime = updateInterval > 0 ? updateInterval : 1000;
+            DWORD waited = 0;
+            while (waited < waitTime && !stopTempThread) {
+                Sleep(100);
+                waited += 100;
             }
         }
-
-        for (int i = 0; i < 20 && !stopTempThread; ++i) {
-            Sleep(100);
-        }
+        pLoc->Release();
     }
 
-    if (pSvc) pSvc->Release();
-    if (pLoc) pLoc->Release();
     if (needUninit) CoUninitialize();
 }
 
@@ -182,7 +193,7 @@ void SystemMonitor::ToggleCsvLogging() {
         csvFile.open("system_report.csv", std::ios::app);
         csvFile.seekp(0, std::ios::end);
         if (csvFile.tellp() == 0) {
-            csvFile << "Time,CPU_Load(%),RAM_Load(%),GPU_Load(%)\n";
+            csvFile << "Time;CPU_Load(%);RAM_Load(%);GPU_Load(%)\n";
         }
         isLoggingCsv = true;
     }
@@ -198,7 +209,13 @@ void SystemMonitor::LogMetricsToCsv(double cpu, double ram, double gpu) {
         char timeStr[64];
         snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d", st.wHour, st.wMinute, st.wSecond);
 
-        csvFile << timeStr << "," << cpu << "," << ram << "," << gpu << "\n";
+        // Конвертуємо числа в рядки і міняємо крапку на кому
+        std::string cpuStr = std::to_string(cpu); std::replace(cpuStr.begin(), cpuStr.end(), '.', ',');
+        std::string ramStr = std::to_string(ram); std::replace(ramStr.begin(), ramStr.end(), '.', ',');
+        std::string gpuStr = std::to_string(gpu); std::replace(gpuStr.begin(), gpuStr.end(), '.', ',');
+
+        // Записуємо у файл
+        csvFile << timeStr << ";" << cpuStr << ";" << ramStr << ";" << gpuStr << "\n";
         csvFile.flush();
         lastCsvLogTime = currentTime;
     }

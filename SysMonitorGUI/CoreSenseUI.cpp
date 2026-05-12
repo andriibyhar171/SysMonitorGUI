@@ -166,7 +166,7 @@ namespace CoreSenseUI {
             if (DrawToggle("On Top", &alwaysOnTop, currentAccentColor)) SetWindowPos(hwnd, alwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
             ImGui::Separator(); ImGui::Spacing();
             ImGui::Text(ICON_FA_MICROCHIP " CPU: %5.1f%%", cpuLoad);
-            if (cpuTemp > 0.0) { ImGui::SameLine(); ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "[%.1f C]", cpuTemp); }
+            if (cpuTemp > 0.0) { ImGui::SameLine(); ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "| Temp: %.1f C (ACPI)", cpuTemp); }
             DrawColoredProgressBar((float)cpuLoad / 100.0f, ImVec2(-1.0f, 14.0f));
             ImGui::Text(ICON_FA_MEMORY " RAM: %5.1f%%", memInfo.loadPercent);
             DrawColoredProgressBar((float)memInfo.loadPercent / 100.0f, ImVec2(-1.0f, 14.0f));
