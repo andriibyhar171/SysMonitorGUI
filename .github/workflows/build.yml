@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "master" ]
     tags:
-      - "v1.0.2" # Запускає створення релізу при пуші тегу, наприклад v1.0.1
+      - "v1.0.3"
   pull_request:
     branches: [ "master" ]
 
