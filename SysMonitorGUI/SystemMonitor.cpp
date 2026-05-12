@@ -66,6 +66,11 @@ SystemMonitor::SystemMonitor() :
     }
     PdhCollectQueryData(diskQuery);
 
+    // Ініціалізація GPU PDH
+    PdhOpenQuery(NULL, NULL, &gpuQuery);
+    PdhAddEnglishCounterA(gpuQuery, "\\GPU Engine(*engtype_3D)\\Utilization Percentage", 0, &gpuCounter);
+    PdhCollectQueryData(gpuQuery);
+
     tempThread = std::thread(&SystemMonitor::TemperatureWorker, this);
 }
 
@@ -78,6 +83,7 @@ SystemMonitor::~SystemMonitor() {
     if (logFile.is_open()) logFile.close();
     if (csvFile.is_open()) csvFile.close();
     PdhCloseQuery(diskQuery);
+    PdhCloseQuery(gpuQuery); // Очищення GPU PDH
 }
 
 std::string SystemMonitor::GetDriveTypeString(UINT type) {
@@ -395,8 +401,14 @@ MemoryData SystemMonitor::GetMemoryInfo() {
     data.loadPercent = memInfo.dwMemoryLoad;
     data.totalMB = memInfo.ullTotalPhys / (1024 * 1024);
     data.availableMB = memInfo.ullAvailPhys / (1024 * 1024);
-    data.pageFileMB = memInfo.ullTotalPageFile / (1024 * 1024);
-    data.virtualMB = memInfo.ullTotalVirtual / (1024 * 1024);
+
+    // Розрахунок виділеної пам'яті (Committed Memory = RAM + Page File)
+    DWORDLONG commitLimitMB = memInfo.ullTotalPageFile / (1024 * 1024);
+    DWORDLONG commitUsedMB = (memInfo.ullTotalPageFile - memInfo.ullAvailPageFile) / (1024 * 1024);
+
+    data.pageFileMB = commitUsedMB;  // Тепер тут реальне використання
+    data.virtualMB = commitLimitMB;  // Максимальний ліміт
+
     return data;
 }
 
@@ -496,6 +508,21 @@ const std::vector<GpuData>& SystemMonitor::GetGpuList() {
         cachedGpus.clear();
         IDXGIFactory4* factory = nullptr;
 
+        // 1. Збираємо дані PDH для всіх GPU перед циклом
+        PdhCollectQueryData(gpuQuery);
+        DWORD bufferSize = 0;
+        DWORD itemCount = 0;
+        PdhGetFormattedCounterArrayA(gpuCounter, PDH_FMT_DOUBLE, &bufferSize, &itemCount, NULL);
+
+        std::vector<BYTE> pdhBuffer(bufferSize);
+        PDH_FMT_COUNTERVALUE_ITEM_A* gpuItems = nullptr;
+        if (bufferSize > 0) {
+            gpuItems = (PDH_FMT_COUNTERVALUE_ITEM_A*)pdhBuffer.data();
+            if (PdhGetFormattedCounterArrayA(gpuCounter, PDH_FMT_DOUBLE, &bufferSize, &itemCount, gpuItems) != ERROR_SUCCESS) {
+                itemCount = 0;
+            }
+        }
+
         if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) {
             IDXGIAdapter1* adapter = nullptr;
             for (UINT i = 0; factory->EnumAdapters1(i, &adapter) != DXGI_ERROR_NOT_FOUND; ++i) {
@@ -524,7 +551,20 @@ const std::vector<GpuData>& SystemMonitor::GetGpuList() {
                     adapter3->Release();
                 }
 
-                data.coreLoadPercent = 0.0; // Підготували місце для 3D Core Load
+                // 2. Форматуємо унікальний LUID адаптера
+                char luidStr[64];
+                snprintf(luidStr, sizeof(luidStr), "luid_0x%08x_0x%08x", (unsigned int)desc.AdapterLuid.HighPart, desc.AdapterLuid.LowPart);
+
+                // 3. Шукаємо всі процеси, які вантажать саме цю відеокарту
+                double totalCoreLoad = 0.0;
+                for (DWORD j = 0; j < itemCount; j++) {
+                    if (gpuItems && gpuItems[j].szName != nullptr && strstr(gpuItems[j].szName, luidStr) != nullptr) {
+                        totalCoreLoad += gpuItems[j].FmtValue.doubleValue;
+                    }
+                }
+
+                if (totalCoreLoad > 100.0) totalCoreLoad = 100.0;
+                data.coreLoadPercent = totalCoreLoad;
 
                 adapter->Release();
                 cachedGpus.push_back(data);

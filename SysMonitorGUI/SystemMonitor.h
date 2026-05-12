@@ -10,7 +10,7 @@
 #include <pdh.h>
 
 #define SystemProcessorPerformanceInformation 8
-#define CORESENSE_VERSION "v1.0.2"
+#define CORESENSE_VERSION "v1.0.3"
 
 typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
     LARGE_INTEGER IdleTime;
@@ -112,6 +112,10 @@ private:
     std::map<std::string, PDH_HCOUNTER> diskWriteCounters;
     ULONGLONG lastDiskQueryTime;
     std::vector<DriveData> cachedDrives;
+
+    // --- НОВІ ЗМІННІ ДЛЯ GPU ---
+    PDH_HQUERY gpuQuery;
+    PDH_HCOUNTER gpuCounter;
 
     std::vector<float> cpuHistory;
     std::vector<float> ramHistory;

@@ -235,7 +235,9 @@ namespace CoreSenseUI {
                     // --- СЕКЦІЯ RAM ---
                     ImGui::TextColored(currentAccentColor, ICON_FA_MEMORY " MEMORY (RAM)");
                     ImGui::Text("Physical Load: %5.1f%% (%llu MB free of %llu MB)", memInfo.loadPercent, memInfo.availableMB, memInfo.totalMB);
-                    ImGui::TextColored(infoColor, "Page File (Swap) Used: %llu MB", memInfo.pageFileMB);
+
+                    // НОВИЙ РЯДОК ДЛЯ PAGE FILE:
+                    ImGui::TextColored(infoColor, "Committed (RAM + Swap): %llu MB / %llu MB", memInfo.pageFileMB, memInfo.virtualMB);
 
                     ImGui::SameLine(ImGui::GetWindowWidth() - 100 * main_scale);
                     if (ImGui::SmallButton(showRamGraph ? "Hide Graph##RAM" : "Show Graph##RAM")) showRamGraph = !showRamGraph;
@@ -286,7 +288,7 @@ namespace CoreSenseUI {
                         ImGui::PlotLines("##GPUPlot", monitor.GetGpuHistory(), 100, 0, vramOverlay, 0.0f, 100.0f, ImVec2(-1.0f, 80.0f)); ImGui::PopStyleColor(2);
                     }
 
-                    // --- НОВА СЕКЦІЯ: MINI I/O ---
+                    // --- СЕКЦІЯ: MINI I/O ---
                     ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
                     ImGui::TextColored(currentAccentColor, ICON_FA_HDD " STORAGE I/O (TOTAL)");
                     double totalRead = 0.0, totalWrite = 0.0;
