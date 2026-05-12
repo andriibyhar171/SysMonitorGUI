@@ -6,7 +6,7 @@
 #include <shellapi.h>
 #include <comdef.h>
 #include <Wbemidl.h>
-#include <algorithm>
+#include <algorithm> // Для std::replace у CSV
 
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "wbemuuid.lib")
@@ -40,6 +40,7 @@ SystemMonitor::SystemMonitor() :
     cpuHistory.resize(100, 0.0f);
     ramHistory.resize(100, 0.0f);
     gpuHistory.resize(100, 0.0f);
+    gpuCoreHistory.resize(100, 0.0f);
     coreHistories.resize(numProcessors, std::vector<float>(100, 0.0f));
 
     NtQuerySystemInfo = (PNT_QUERY_SYSTEM_INFORMATION)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtQuerySystemInformation");
@@ -103,7 +104,6 @@ void SystemMonitor::TemperatureWorker() {
 
         while (!stopTempThread) {
             IWbemServices* pSvc = NULL;
-
             if (SUCCEEDED(pLoc->ConnectServer(_bstr_t(L"ROOT\\WMI"), NULL, NULL, 0, NULL, 0, 0, &pSvc))) {
                 CoSetProxyBlanket(pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
 
@@ -174,7 +174,6 @@ void SystemMonitor::RestartAsAdmin() {
     }
 }
 
-
 void SystemMonitor::Log(const std::string& message) {
     if (logFile.is_open()) {
         logFile << message << "\n";
@@ -209,25 +208,24 @@ void SystemMonitor::LogMetricsToCsv(double cpu, double ram, double gpu) {
         char timeStr[64];
         snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d", st.wHour, st.wMinute, st.wSecond);
 
-        // Конвертуємо числа в рядки і міняємо крапку на кому
         std::string cpuStr = std::to_string(cpu); std::replace(cpuStr.begin(), cpuStr.end(), '.', ',');
         std::string ramStr = std::to_string(ram); std::replace(ramStr.begin(), ramStr.end(), '.', ',');
         std::string gpuStr = std::to_string(gpu); std::replace(gpuStr.begin(), gpuStr.end(), '.', ',');
 
-        // Записуємо у файл
         csvFile << timeStr << ";" << cpuStr << ";" << ramStr << ";" << gpuStr << "\n";
         csvFile.flush();
         lastCsvLogTime = currentTime;
     }
 }
 
-void SystemMonitor::UpdateHistory(double currentCpu, double currentRam, const std::vector<double>& coreLoads, double currentGpuVram) {
+void SystemMonitor::UpdateHistory(double currentCpu, double currentRam, const std::vector<double>& coreLoads, double currentGpuVram, double currentGpuCore) {
     ULONGLONG currentTime = GetTickCount64();
     if (currentTime - lastHistoryTime > updateInterval) {
         for (size_t i = 0; i < cpuHistory.size() - 1; i++) {
             cpuHistory[i] = cpuHistory[i + 1];
             ramHistory[i] = ramHistory[i + 1];
             gpuHistory[i] = gpuHistory[i + 1];
+            gpuCoreHistory[i] = gpuCoreHistory[i + 1];
             for (int c = 0; c < numProcessors; c++) {
                 if (c < coreLoads.size()) {
                     coreHistories[c][i] = coreHistories[c][i + 1];
@@ -237,6 +235,7 @@ void SystemMonitor::UpdateHistory(double currentCpu, double currentRam, const st
         cpuHistory.back() = (float)currentCpu;
         ramHistory.back() = (float)currentRam;
         gpuHistory.back() = (float)currentGpuVram;
+        gpuCoreHistory.back() = (float)currentGpuCore;
         for (int c = 0; c < numProcessors; c++) {
             if (c < coreLoads.size()) {
                 coreHistories[c].back() = (float)coreLoads[c];
@@ -249,6 +248,7 @@ void SystemMonitor::UpdateHistory(double currentCpu, double currentRam, const st
 const float* SystemMonitor::GetCpuHistory() const { return cpuHistory.data(); }
 const float* SystemMonitor::GetRamHistory() const { return ramHistory.data(); }
 const float* SystemMonitor::GetGpuHistory() const { return gpuHistory.data(); }
+const float* SystemMonitor::GetGpuCoreHistory() const { return gpuCoreHistory.data(); }
 const float* SystemMonitor::GetCoreHistory(int index) const {
     if (index >= 0 && index < coreHistories.size()) return coreHistories[index].data();
     return nullptr;
@@ -280,7 +280,6 @@ const SystemInfoData& SystemMonitor::GetSystemInfo() {
                     }
                 }
             }
-
             RegCloseKey(hKey);
         }
 
@@ -524,6 +523,9 @@ const std::vector<GpuData>& SystemMonitor::GetGpuList() {
                     }
                     adapter3->Release();
                 }
+
+                data.coreLoadPercent = 0.0; // Підготували місце для 3D Core Load
+
                 adapter->Release();
                 cachedGpus.push_back(data);
             }

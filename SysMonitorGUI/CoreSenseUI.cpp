@@ -61,7 +61,8 @@ bool DrawToggle(const char* label, bool* v, ImVec4 accentColor) {
 
 namespace CoreSenseUI {
     void Render(SystemMonitor& monitor, HWND hwnd, NOTIFYICONDATAW& nid, float main_scale) {
-        static bool showCpuGraph = false, showRamGraph = false, showGpuGraph = false, alwaysOnTop = false;
+        static bool showCpuGraph = false, showRamGraph = false, showGpuGraph = false, showGpuCoreGraph = false;
+        static bool alwaysOnTop = false;
         static bool miniMode = false, lastMiniMode = false;
         static int updateIntervalMs = 1000;
         static DWORD processToKillPID = 0;
@@ -145,7 +146,8 @@ namespace CoreSenseUI {
         if (selectedGpuIndex >= gpus.size()) selectedGpuIndex = 0;
         GpuData gpuInfo = gpus.empty() ? GpuData() : gpus[selectedGpuIndex];
 
-        monitor.UpdateHistory(cpuLoad, memInfo.loadPercent, coreLoads, gpuInfo.loadPercent);
+        // Оновлений виклик історії з 3D Core Load
+        monitor.UpdateHistory(cpuLoad, memInfo.loadPercent, coreLoads, gpuInfo.loadPercent, gpuInfo.coreLoadPercent);
         monitor.LogMetricsToCsv(cpuLoad, memInfo.loadPercent, gpuInfo.loadPercent);
 
         const ImGuiViewport* vp = ImGui::GetMainViewport();
@@ -166,7 +168,7 @@ namespace CoreSenseUI {
             if (DrawToggle("On Top", &alwaysOnTop, currentAccentColor)) SetWindowPos(hwnd, alwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
             ImGui::Separator(); ImGui::Spacing();
             ImGui::Text(ICON_FA_MICROCHIP " CPU: %5.1f%%", cpuLoad);
-            if (cpuTemp > 0.0) { ImGui::SameLine(); ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "| Temp: %.1f C (ACPI)", cpuTemp); }
+            if (cpuTemp > 0.0) { ImGui::SameLine(); ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "[%.1f C]", cpuTemp); }
             DrawColoredProgressBar((float)cpuLoad / 100.0f, ImVec2(-1.0f, 14.0f));
             ImGui::Text(ICON_FA_MEMORY " RAM: %5.1f%%", memInfo.loadPercent);
             DrawColoredProgressBar((float)memInfo.loadPercent / 100.0f, ImVec2(-1.0f, 14.0f));
@@ -205,8 +207,12 @@ namespace CoreSenseUI {
             ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
             static bool showActiveNetsOnly = true;
             if (ImGui::BeginTabBar("MainTabBar", ImGuiTabBarFlags_NoTooltip)) {
+
+                // --- ГОЛОВНА ВКЛАДКА DASHBOARD ---
                 if (ImGui::BeginTabItem(" " ICON_FA_TACHOMETER_ALT " Dashboard  ")) {
                     ImGui::Spacing();
+
+                    // --- СЕКЦІЯ CPU ---
                     ImGui::TextColored(currentAccentColor, ICON_FA_MICROCHIP " PROCESSOR (CPU)");
                     ImGui::Text("Overall Load: %5.1f%%", cpuLoad);
                     if (cpuTemp > 0.0) { ImGui::SameLine(); ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "| Temp: %.1f C (ACPI)", cpuTemp); }
@@ -225,8 +231,12 @@ namespace CoreSenseUI {
                         }
                     }
                     ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+                    // --- СЕКЦІЯ RAM ---
                     ImGui::TextColored(currentAccentColor, ICON_FA_MEMORY " MEMORY (RAM)");
-                    ImGui::Text("Load: %5.1f%% (%llu MB free of %llu MB)", memInfo.loadPercent, memInfo.availableMB, memInfo.totalMB);
+                    ImGui::Text("Physical Load: %5.1f%% (%llu MB free of %llu MB)", memInfo.loadPercent, memInfo.availableMB, memInfo.totalMB);
+                    ImGui::TextColored(infoColor, "Page File (Swap) Used: %llu MB", memInfo.pageFileMB);
+
                     ImGui::SameLine(ImGui::GetWindowWidth() - 100 * main_scale);
                     if (ImGui::SmallButton(showRamGraph ? "Hide Graph##RAM" : "Show Graph##RAM")) showRamGraph = !showRamGraph;
                     DrawColoredProgressBar((float)memInfo.loadPercent / 100.0f, ImVec2(-1.0f, 0.0f));
@@ -236,6 +246,8 @@ namespace CoreSenseUI {
                         ImGui::PlotLines("##RAMPlot", monitor.GetRamHistory(), 100, 0, ramOverlay, 0.0f, 100.0f, ImVec2(-1.0f, 80.0f)); ImGui::PopStyleColor(2);
                     }
                     ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+                    // --- СЕКЦІЯ GPU ---
                     ImGui::TextColored(currentAccentColor, ICON_FA_GAMEPAD " GRAPHICS (GPU)");
                     if (gpus.size() > 1) {
                         ImGui::SetNextItemWidth(250.0f * main_scale);
@@ -249,15 +261,41 @@ namespace CoreSenseUI {
                         }
                     }
                     else ImGui::Text("%s", gpuInfo.name.c_str());
-                    ImGui::TextColored(infoColor, "VRAM Load: (%llu MB used of %llu MB)", gpuInfo.usedVRAM_MB, gpuInfo.totalVRAM_MB);
-                    ImGui::SameLine(ImGui::GetWindowWidth() - 100 * main_scale);
-                    if (ImGui::SmallButton(showGpuGraph ? "Hide Graph##GPU" : "Show Graph##GPU")) showGpuGraph = !showGpuGraph;
-                    DrawColoredProgressBar((float)gpuInfo.loadPercent / 100.0f, ImVec2(-1.0f, 0.0f));
-                    if (showGpuGraph) {
-                        char gpuOverlay[32]; snprintf(gpuOverlay, sizeof(gpuOverlay), "VRAM History: %.1f%%", gpuInfo.loadPercent);
+
+                    // GPU Core Load
+                    ImGui::Text("3D Core Load: %5.1f%%", gpuInfo.coreLoadPercent);
+                    ImGui::SameLine(ImGui::GetWindowWidth() - 120 * main_scale);
+                    if (ImGui::SmallButton(showGpuCoreGraph ? "Hide Graph##GPUCore" : "Show Graph##GPUCore")) showGpuCoreGraph = !showGpuCoreGraph;
+                    DrawColoredProgressBar((float)gpuInfo.coreLoadPercent / 100.0f, ImVec2(-1.0f, 14.0f));
+
+                    if (showGpuCoreGraph) {
+                        char coreOverlay[32]; snprintf(coreOverlay, sizeof(coreOverlay), "Core History: %.1f%%", gpuInfo.coreLoadPercent);
                         ImGui::PushStyleColor(ImGuiCol_PlotLines, currentAccentColor); ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(currentAccentColor.x, currentAccentColor.y, currentAccentColor.z, 0.5f));
-                        ImGui::PlotLines("##GPUPlot", monitor.GetGpuHistory(), 100, 0, gpuOverlay, 0.0f, 100.0f, ImVec2(-1.0f, 80.0f)); ImGui::PopStyleColor(2);
+                        ImGui::PlotLines("##GPUCorePlot", monitor.GetGpuCoreHistory(), 100, 0, coreOverlay, 0.0f, 100.0f, ImVec2(-1.0f, 80.0f)); ImGui::PopStyleColor(2);
                     }
+
+                    // VRAM Load
+                    ImGui::TextColored(infoColor, "VRAM Usage: %5.1f%% (%llu MB used of %llu MB)", gpuInfo.loadPercent, gpuInfo.usedVRAM_MB, gpuInfo.totalVRAM_MB);
+                    ImGui::SameLine(ImGui::GetWindowWidth() - 120 * main_scale);
+                    if (ImGui::SmallButton(showGpuGraph ? "Hide Graph##VRAM" : "Show Graph##VRAM")) showGpuGraph = !showGpuGraph;
+                    DrawColoredProgressBar((float)gpuInfo.loadPercent / 100.0f, ImVec2(-1.0f, 14.0f));
+
+                    if (showGpuGraph) {
+                        char vramOverlay[32]; snprintf(vramOverlay, sizeof(vramOverlay), "VRAM History: %.1f%%", gpuInfo.loadPercent);
+                        ImGui::PushStyleColor(ImGuiCol_PlotLines, currentAccentColor); ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(currentAccentColor.x, currentAccentColor.y, currentAccentColor.z, 0.5f));
+                        ImGui::PlotLines("##GPUPlot", monitor.GetGpuHistory(), 100, 0, vramOverlay, 0.0f, 100.0f, ImVec2(-1.0f, 80.0f)); ImGui::PopStyleColor(2);
+                    }
+
+                    // --- НОВА СЕКЦІЯ: MINI I/O ---
+                    ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+                    ImGui::TextColored(currentAccentColor, ICON_FA_HDD " STORAGE I/O (TOTAL)");
+                    double totalRead = 0.0, totalWrite = 0.0;
+                    for (const auto& d : monitor.GetDrivesInfo()) {
+                        totalRead += d.readSpeedMBps;
+                        totalWrite += d.writeSpeedMBps;
+                    }
+                    ImGui::Text("Total Read: %7.1f MB/s  |  Total Write: %7.1f MB/s", totalRead, totalWrite);
+
                     ImGui::EndTabItem();
                 }
 
