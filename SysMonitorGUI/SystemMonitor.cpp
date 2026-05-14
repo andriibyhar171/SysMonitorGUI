@@ -6,7 +6,7 @@
 #include <shellapi.h>
 #include <comdef.h>
 #include <Wbemidl.h>
-#include <algorithm> // Для std::replace у CSV
+#include <algorithm>
 
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "wbemuuid.lib")
@@ -66,7 +66,6 @@ SystemMonitor::SystemMonitor() :
     }
     PdhCollectQueryData(diskQuery);
 
-    // Ініціалізація GPU PDH
     PdhOpenQuery(NULL, NULL, &gpuQuery);
     PdhAddEnglishCounterA(gpuQuery, "\\GPU Engine(*engtype_3D)\\Utilization Percentage", 0, &gpuCounter);
     PdhCollectQueryData(gpuQuery);
@@ -83,7 +82,7 @@ SystemMonitor::~SystemMonitor() {
     if (logFile.is_open()) logFile.close();
     if (csvFile.is_open()) csvFile.close();
     PdhCloseQuery(diskQuery);
-    PdhCloseQuery(gpuQuery); // Очищення GPU PDH
+    PdhCloseQuery(gpuQuery);
 }
 
 std::string SystemMonitor::GetDriveTypeString(UINT type) {
@@ -402,12 +401,11 @@ MemoryData SystemMonitor::GetMemoryInfo() {
     data.totalMB = memInfo.ullTotalPhys / (1024 * 1024);
     data.availableMB = memInfo.ullAvailPhys / (1024 * 1024);
 
-    // Розрахунок виділеної пам'яті (Committed Memory = RAM + Page File)
     DWORDLONG commitLimitMB = memInfo.ullTotalPageFile / (1024 * 1024);
     DWORDLONG commitUsedMB = (memInfo.ullTotalPageFile - memInfo.ullAvailPageFile) / (1024 * 1024);
 
-    data.pageFileMB = commitUsedMB;  // Тепер тут реальне використання
-    data.virtualMB = commitLimitMB;  // Максимальний ліміт
+    data.pageFileMB = commitUsedMB;
+    data.virtualMB = commitLimitMB;
 
     return data;
 }
@@ -508,7 +506,6 @@ const std::vector<GpuData>& SystemMonitor::GetGpuList() {
         cachedGpus.clear();
         IDXGIFactory4* factory = nullptr;
 
-        // 1. Збираємо дані PDH для всіх GPU перед циклом
         PdhCollectQueryData(gpuQuery);
         DWORD bufferSize = 0;
         DWORD itemCount = 0;
@@ -551,11 +548,9 @@ const std::vector<GpuData>& SystemMonitor::GetGpuList() {
                     adapter3->Release();
                 }
 
-                // 2. Форматуємо унікальний LUID адаптера
                 char luidStr[64];
                 snprintf(luidStr, sizeof(luidStr), "luid_0x%08x_0x%08x", (unsigned int)desc.AdapterLuid.HighPart, desc.AdapterLuid.LowPart);
 
-                // 3. Шукаємо всі процеси, які вантажать саме цю відеокарту
                 double totalCoreLoad = 0.0;
                 for (DWORD j = 0; j < itemCount; j++) {
                     if (gpuItems && gpuItems[j].szName != nullptr && strstr(gpuItems[j].szName, luidStr) != nullptr) {

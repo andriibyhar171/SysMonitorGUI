@@ -10,7 +10,7 @@
 #include <pdh.h>
 
 #define SystemProcessorPerformanceInformation 8
-#define CORESENSE_VERSION "v1.1.1"
+#define CORESENSE_VERSION "v1.1.2"
 
 typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
     LARGE_INTEGER IdleTime;
@@ -73,7 +73,7 @@ struct GpuData {
     DWORDLONG totalVRAM_MB;
     DWORDLONG usedVRAM_MB;
     double loadPercent;
-    double coreLoadPercent; // Навантаження на ядро GPU
+    double coreLoadPercent;
 };
 
 class SystemMonitor {
@@ -113,14 +113,13 @@ private:
     ULONGLONG lastDiskQueryTime;
     std::vector<DriveData> cachedDrives;
 
-    // --- НОВІ ЗМІННІ ДЛЯ GPU ---
     PDH_HQUERY gpuQuery;
     PDH_HCOUNTER gpuCounter;
 
     std::vector<float> cpuHistory;
     std::vector<float> ramHistory;
     std::vector<float> gpuHistory;
-    std::vector<float> gpuCoreHistory; // Історія навантаження ядра GPU
+    std::vector<float> gpuCoreHistory;
     std::vector<std::vector<float>> coreHistories;
     ULONGLONG lastHistoryTime;
 
@@ -154,7 +153,7 @@ public:
     const float* GetCpuHistory() const;
     const float* GetRamHistory() const;
     const float* GetGpuHistory() const;
-    const float* GetGpuCoreHistory() const; // Отримати історію ядра
+    const float* GetGpuCoreHistory() const;
     const float* GetCoreHistory(int index) const;
 
     const SystemInfoData& GetSystemInfo();

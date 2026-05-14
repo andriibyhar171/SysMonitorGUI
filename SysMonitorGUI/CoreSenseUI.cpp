@@ -146,7 +146,6 @@ namespace CoreSenseUI {
         if (selectedGpuIndex >= gpus.size()) selectedGpuIndex = 0;
         GpuData gpuInfo = gpus.empty() ? GpuData() : gpus[selectedGpuIndex];
 
-        // Оновлений виклик історії з 3D Core Load
         monitor.UpdateHistory(cpuLoad, memInfo.loadPercent, coreLoads, gpuInfo.loadPercent, gpuInfo.coreLoadPercent);
         monitor.LogMetricsToCsv(cpuLoad, memInfo.loadPercent, gpuInfo.loadPercent);
 
@@ -236,7 +235,6 @@ namespace CoreSenseUI {
                     ImGui::TextColored(currentAccentColor, ICON_FA_MEMORY " MEMORY (RAM)");
                     ImGui::Text("Physical Load: %5.1f%% (%llu MB free of %llu MB)", memInfo.loadPercent, memInfo.availableMB, memInfo.totalMB);
 
-                    // НОВИЙ РЯДОК ДЛЯ PAGE FILE:
                     ImGui::TextColored(infoColor, "Committed (RAM + Swap): %llu MB / %llu MB", memInfo.pageFileMB, memInfo.virtualMB);
 
                     ImGui::SameLine(ImGui::GetWindowWidth() - 100 * main_scale);
@@ -264,7 +262,6 @@ namespace CoreSenseUI {
                     }
                     else ImGui::Text("%s", gpuInfo.name.c_str());
 
-                    // GPU Core Load
                     ImGui::Text("3D Core Load: %5.1f%%", gpuInfo.coreLoadPercent);
                     ImGui::SameLine(ImGui::GetWindowWidth() - 120 * main_scale);
                     if (ImGui::SmallButton(showGpuCoreGraph ? "Hide Graph##GPUCore" : "Show Graph##GPUCore")) showGpuCoreGraph = !showGpuCoreGraph;
@@ -276,7 +273,6 @@ namespace CoreSenseUI {
                         ImGui::PlotLines("##GPUCorePlot", monitor.GetGpuCoreHistory(), 100, 0, coreOverlay, 0.0f, 100.0f, ImVec2(-1.0f, 80.0f)); ImGui::PopStyleColor(2);
                     }
 
-                    // VRAM Load
                     ImGui::TextColored(infoColor, "VRAM Usage: %5.1f%% (%llu MB used of %llu MB)", gpuInfo.loadPercent, gpuInfo.usedVRAM_MB, gpuInfo.totalVRAM_MB);
                     ImGui::SameLine(ImGui::GetWindowWidth() - 120 * main_scale);
                     if (ImGui::SmallButton(showGpuGraph ? "Hide Graph##VRAM" : "Show Graph##VRAM")) showGpuGraph = !showGpuGraph;
