@@ -22,6 +22,7 @@ jobs:
       id: get_version
       shell: pwsh
       run: |
+        #
         $line = Get-Content SysMonitorGUI/SystemMonitor.h | Where-Object { $_ -match '#define\s+CORESENSE_VERSION\s+"(v\d+\.\d+\.\d+)"' } | Select-Object -First 1
         if ($line -match '#define\s+CORESENSE_VERSION\s+"(v\d+\.\d+\.\d+)"') {
             $ver = $Matches[1]
