@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "master" ]
     tags:
-      - "v1.1.1"
+      - "v*.*.*"
   pull_request:
     branches: [ "master" ]
 
@@ -17,6 +17,20 @@ jobs:
     steps:
     - name: 📥 Отримання коду з репозиторію
       uses: actions/checkout@v4
+
+    - name: 🔍 Витягнення версії з SystemMonitor.h
+      id: get_version
+      shell: pwsh
+      run: |
+        $line = Get-Content SystemMonitor.h | Where-Object { $_ -match '#define\s+CORESENSE_VERSION\s+"(v\d+\.\d+\.\d+)"' } | Select-Object -First 1
+        if ($line -match '#define\s+CORESENSE_VERSION\s+"(v\d+\.\d+\.\d+)"') {
+            $ver = $Matches[1]
+            Write-Host "Знайдено версію в коді: $ver"
+            Add-Content -Path $env:GITHUB_ENV -Value "APP_VERSION=$ver"
+        } else {
+            Write-Host "Помилка: Версію не знайдено у SystemMonitor.h!"
+            exit 1
+        }
 
     - name: 🛠 Налаштування MSBuild
       uses: microsoft/setup-msbuild@v2
@@ -34,31 +48,28 @@ jobs:
       shell: pwsh
       run: |
         $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin" -Filter signtool.exe -Recurse | Where-Object { $_.FullName -match "\\x64\\" } | Select-Object -First 1
-        
         Write-Host "Використовується SignTool: $($signtool.FullName)"
-        
         & $signtool.FullName sign /f "${{ github.workspace }}\cert.pfx" /p "${{ secrets.CERT_PASSWORD }}" /fd SHA256 /t http://timestamp.digicert.com /v "x64/Release/CoreSense.exe"
 
-    - name: 🗜️ Пакування у ZIP-архів
+    - name: 🗜️ Пакування у ZIP-архів (з розумною назвою)
       shell: pwsh
       run: |
         New-Item -ItemType Directory -Force -Path "CoreSense"
-        
         Copy-Item -Path "x64/Release/CoreSense.exe" -Destination "CoreSense\"
         
-        Compress-Archive -Path "CoreSense" -DestinationPath "CoreSense.zip" -Force
+        Compress-Archive -Path "CoreSense" -DestinationPath "CoreSense_${{ env.APP_VERSION }}.zip" -Force
 
     - name: 📦 Збереження ZIP як артефакту
       uses: actions/upload-artifact@v4
       with:
-        name: CoreSense-Utility
-        path: CoreSense.zip
+        name: CoreSense-Utility-${{ env.APP_VERSION }}
+        path: CoreSense_${{ env.APP_VERSION }}.zip
 
     - name: 🚀 Створення GitHub Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v2
       with:
-        files: CoreSense.zip
-        name: Release ${{ github.ref_name }}
+        files: CoreSense_${{ env.APP_VERSION }}.zip
+        name: Release ${{ env.APP_VERSION }}
         draft: false
         prerelease: false
