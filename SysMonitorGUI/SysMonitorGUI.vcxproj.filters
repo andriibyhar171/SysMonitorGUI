@@ -109,4 +109,7 @@
   <ItemGroup>
     <Font Include="fa-solid-900.ttf" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\.github\workflows\build.yml" />
+  </ItemGroup>
 </Project>
